@@ -1,6 +1,7 @@
 package com.example.test.security;
 
-import com.example.test.filter.CustomAuthFilter;
+import com.example.test.filter.CustomAuthenticationFilter;
+import com.example.test.filter.CustomAuthorizationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,6 +13,7 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.http.HttpMethod.POST;
@@ -34,22 +36,24 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        CustomAuthFilter customAuthFilter = new CustomAuthFilter(authenticationManagerBean());
+        CustomAuthenticationFilter customAuthenticationFilter = new CustomAuthenticationFilter(authenticationManagerBean());
         //overwrite the basic spring security login page from base class
-        customAuthFilter.setFilterProcessesUrl("/api/login");
+        customAuthenticationFilter.setFilterProcessesUrl("/api/login");
 
 
         http.csrf().disable();
         http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
 
         //FOR ACCESSING RESOURCES THAT DO NOT REQUIRE YOU TO BE LOGGED IN, you need to put permitALL
-        http.authorizeRequests().antMatchers("/api/login/**").permitAll();
+        http.authorizeRequests().antMatchers("/api/login/**","/api/token/refresh/**").permitAll();
 
         //FOR AUTHORIZATION
         http.authorizeRequests().antMatchers(GET,"/api/user/**").hasAnyAuthority("USER");
         http.authorizeRequests().antMatchers(POST,"/api/user/save/**").hasAnyAuthority("ADMIN");
         http.authorizeRequests().anyRequest().authenticated();
-        http.addFilter(customAuthFilter);
+        http.addFilter(customAuthenticationFilter);
+
+        http.addFilterBefore(new CustomAuthorizationFilter(), UsernamePasswordAuthenticationFilter.class);
     }
     @Bean
     @Override
